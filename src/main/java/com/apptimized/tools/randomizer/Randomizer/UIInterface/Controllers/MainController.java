@@ -50,7 +50,7 @@ public class MainController implements Initializable {
     private RadioButton subtasksRadio, pairRadio;
 
     @FXML
-    private Button shuffleButton, createIssuesButton, pushToJiraButton;
+    private Button shuffleButton, createIssuesButton, pushToJiraButton, loadQueryResultButton;
 
     @FXML
     private TableView<Issue> issuesTable;
@@ -109,7 +109,14 @@ public class MainController implements Initializable {
 
     @FXML
     protected void getQueryResultsInTable(ActionEvent event) {
+        new Thread(() -> {
+            getQueryResultsInTableHandler();
+        }).start();
+    }
+
+    private void getQueryResultsInTableHandler() {
         try {
+            loadQueryResultButton.setDisable(true);
             String query = jqlTextInput.getText();
             if(query.equals("")) {
                 showMessage(Alert.AlertType.INFORMATION, "Information",
@@ -144,6 +151,8 @@ public class MainController implements Initializable {
             initialize(issuesList);
         } catch(Exception ex) {
             showExceptionAlert(ex);
+        } finally {
+            loadQueryResultButton.setDisable(false);
         }
     }
 
@@ -179,22 +188,34 @@ public class MainController implements Initializable {
 
     @FXML
     protected void pushToJira(ActionEvent event) {
+        new Thread(() -> {
+            pushToJiraHandler();
+        }).start();
+    }
+
+    @FXML
+    private void pushToJiraHandler() {
         try {
+            loadQueryResultButton.setDisable(true);
+            pushToJiraButton.setDisable(true);
+            shuffleButton.setDisable(true);
             for (int i = 0; i < issuesList.size(); i++) {
                 RestActions.setAssignee(issuesList.get(i).getAssignee(), issuesList.get(i).getKey());
                 RestActions.setPackager(issuesList.get(i).getPackager(), issuesList.get(i).getKey());
                 RestActions.setQAEngineer(issuesList.get(i).getQa_engineer(), issuesList.get(i).getKey());
             }
-            pushToJiraButton.setDisable(true);
+
             initialize(issuesList);
         } catch(Exception ex) {
             showExceptionAlert(ex);
+        } finally {
+            loadQueryResultButton.setDisable(false);
+            shuffleButton.setDisable(false);
         }
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb){
-
         radioGroup1.selectedToggleProperty().addListener(new ChangeListener<Toggle>(){
             public void changed(ObservableValue<? extends Toggle> ov,
                                 Toggle old_toggle, Toggle new_toggle) {
@@ -208,8 +229,6 @@ public class MainController implements Initializable {
                 }
             }
         });
-
-
         try {
             if(usersList.size() == 0) {
                 usersList =  parseUsers(RestActions.getUsersFromGroup(PACKAGERS_USERS_GROUP));
@@ -222,6 +241,12 @@ public class MainController implements Initializable {
 
     @FXML
     protected void createIssues(ActionEvent event) {
+        new Thread(() -> {
+            createIssuesHandler();
+        }).start();
+    }
+
+    private void createIssuesHandler() {
         try {
             createIssuesButton.setDisable(true);
             String result;
@@ -234,7 +259,6 @@ public class MainController implements Initializable {
             if (summary.equals("")) {
                 summary = (!appVendor.equals("") ? appVendor + "_" : appVendor) + appName + "_" + appVersion;
             }
-
             outputTextArea.appendText("----------------------\n");
             if(subtasksRadio.isSelected()) {
                 if(parentID.equals("")) {
@@ -250,7 +274,6 @@ public class MainController implements Initializable {
                             + result + "\n\n");
                 }
             }
-
             if(pairRadio.isSelected()) {
                 for (int i = 0; i < amount; i++) {
                     parentID = RestActions.createIssue(summary, appName, appVersion, appVendor);
